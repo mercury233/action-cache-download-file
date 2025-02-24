@@ -15,10 +15,11 @@ inputs:
 outputs:
   filepath:
     description: 'Path to the downloaded file'
+    value: ${{ steps.set-output.outputs.filepath }}
 runs:
   using: "composite"
   steps:
-    - name: Set file name
+    - name: Get file name
       shell: bash
       run: |
         if [ -n "${{ inputs.filename }}" ]; then
@@ -27,6 +28,7 @@ runs:
           echo "filename=$(basename ${{ inputs.url }})" >> $GITHUB_ENV
         fi
     - name: Set output path
+      id: set-output
       shell: bash
       run: |
         echo "filepath=${{ inputs.destination }}/${{ env.filename }}" >> $GITHUB_OUTPUT
