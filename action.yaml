@@ -1,0 +1,35 @@
+name: 'Download file from URL and cache it in GitHub Actions'
+description: 'Download file from URL and cache it in GitHub Actions, to avoid downloading it every time'
+inputs:
+  url:
+    description: 'URL of the file to download'
+    required: true
+  destination:
+    description: 'Destination directory to save the downloaded file'
+    required: false
+    default: 'temp'
+  filename:
+    description: 'Name of the downloaded file'
+    required: false
+    default: ${{ split(split(inputs.url, '/')[-1], '?')[0] }}
+outputs:
+  file-path:
+    description: 'path to the downloaded file'
+    value: ${{ inputs.destination }}/${{ inputs.filename }}
+runs:
+  using: "composite"
+  steps:
+    - name: Check cache
+      id: cache
+      uses: actions/cache@v4
+      with:
+        key: ${{ inputs.url }}
+        path: ${{ inputs.destination }}/${{ inputs.filename }}
+    - if: steps.cache.outputs.cache-hit != 'true'
+      name: Download file
+      shell: bash
+      run: |
+        mkdir -p ${{ inputs.destination }}
+        curl --retry 5 --connect-timeout 30 --location `
+          -o ${{ inputs.destination }}/${{ inputs.filename }} `
+          ${{ inputs.url }}
