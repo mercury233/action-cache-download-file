@@ -39,6 +39,6 @@ runs:
       shell: bash
       run: |
         mkdir -p ${{ inputs.destination }}
-        curl --retry 5 --connect-timeout 30 --location `
-          -o ${{ inputs.destination }}/${{ env.filename }} `
+        curl --retry 5 --connect-timeout 30 --location \
+          -o ${{ inputs.destination }}/${{ env.filename }} \
           ${{ inputs.url }}
