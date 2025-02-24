@@ -15,20 +15,20 @@ outputs:
   filename:
     description: 'Name of the downloaded file'
   file-path:
-    description: 'path to the downloaded file'
-    value: ${{ inputs.destination }}/${{ outputs.filename }}
+    description: 'Path to the downloaded file'
 runs:
   using: "composite"
   steps:
     - name: Set output name
       id: set-output
       shell: bash
-        run: |
-          if [ -n "${{ inputs.filename }}" ]; then
-            echo "filename=${{ inputs.filename }}" >> $GITHUB_OUTPUT
-          else
-            echo "filename=$(basename ${{ inputs.url }})" >> $GITHUB_OUTPUT
-          fi
+      run: |
+        if [ -n "${{ inputs.filename }}" ]; then
+          echo "filename=${{ inputs.filename }}" >> $GITHUB_OUTPUT
+        else
+          echo "filename=$(basename ${{ inputs.url }})" >> $GITHUB_OUTPUT
+        fi
+        echo "file-path=${{ inputs.destination }}/${{ outputs.filename }}" >> $GITHUB_OUTPUT
     - name: Check cache
       id: cache
       uses: actions/cache@v4
