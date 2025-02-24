@@ -18,8 +18,7 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Set output name
-      id: set-output
+    - name: Set file name
       shell: bash
       run: |
         if [ -n "${{ inputs.filename }}" ]; then
@@ -27,6 +26,9 @@ runs:
         else
           echo "filename=$(basename ${{ inputs.url }})" >> $GITHUB_ENV
         fi
+    - name: Set output path
+      shell: bash
+      run: |
         echo "file-path=${{ inputs.destination }}/${{ env.filename }}" >> $GITHUB_OUTPUT
     - name: Check cache
       id: cache
