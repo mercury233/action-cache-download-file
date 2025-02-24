@@ -9,27 +9,37 @@ inputs:
     required: false
     default: 'temp'
   filename:
-    description: 'Name of the downloaded file'
+    description: 'Set the name of the downloaded file'
     required: false
-    default: ${{ split(split(inputs.url, '/')[-1], '?')[0] }}
 outputs:
+  filename:
+    description: 'Name of the downloaded file'
   file-path:
     description: 'path to the downloaded file'
-    value: ${{ inputs.destination }}/${{ inputs.filename }}
+    value: ${{ inputs.destination }}/${{ outputs.filename }}
 runs:
   using: "composite"
   steps:
+    - name: Set output name
+      id: set-output
+      shell: bash
+        run: |
+          if [ -n "${{ inputs.filename }}" ]; then
+            echo "filename=${{ inputs.filename }}" >> $GITHUB_OUTPUT
+          else
+            echo "filename=$(basename ${{ inputs.url }})" >> $GITHUB_OUTPUT
+          fi
     - name: Check cache
       id: cache
       uses: actions/cache@v4
       with:
         key: ${{ inputs.url }}
-        path: ${{ inputs.destination }}/${{ inputs.filename }}
+        path: ${{ inputs.destination }}/${{ outputs.filename }}
     - if: steps.cache.outputs.cache-hit != 'true'
       name: Download file
       shell: bash
       run: |
         mkdir -p ${{ inputs.destination }}
         curl --retry 5 --connect-timeout 30 --location `
-          -o ${{ inputs.destination }}/${{ inputs.filename }} `
+          -o ${{ inputs.destination }}/${{ outputs.filename }} `
           ${{ inputs.url }}
