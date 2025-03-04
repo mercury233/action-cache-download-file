@@ -34,7 +34,7 @@ runs:
         echo "filepath=${{ inputs.destination }}/${{ env.filename }}" >> $GITHUB_OUTPUT
     - name: Check cache
       id: cache
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       with:
         key: ${{ inputs.url }}
         path: ${{ inputs.destination }}/${{ env.filename }}
@@ -46,3 +46,9 @@ runs:
         curl --retry 5 --connect-timeout 30 --location \
           -o ${{ inputs.destination }}/${{ env.filename }} \
           ${{ inputs.url }}
+    - if: steps.cache.outputs.cache-hit != 'true'
+      name: Save cache
+      uses: actions/cache/save@v4
+      with:
+        key: ${{ inputs.url }}
+        path: ${{ inputs.destination }}/${{ env.filename }}
