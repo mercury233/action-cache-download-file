@@ -23,32 +23,36 @@ runs:
       shell: bash
       run: |
         if [ -n "${{ inputs.filename }}" ]; then
-          echo "filename=${{ inputs.filename }}" >> $GITHUB_ENV
+          echo "mercury233_action_cache_download_file_filename=${{ inputs.filename }}" >> $GITHUB_ENV
         else
-          echo "filename=$(basename ${{ inputs.url }})" >> $GITHUB_ENV
+          echo "mercury233_action_cache_download_file_filename=$(basename ${{ inputs.url }})" >> $GITHUB_ENV
         fi
     - name: Set output path
       id: set-output
       shell: bash
       run: |
-        echo "filepath=${{ inputs.destination }}/${{ env.filename }}" >> $GITHUB_OUTPUT
+        echo "filepath=${{ inputs.destination }}/${{ env.mercury233_action_cache_download_file_filename }}" >> $GITHUB_OUTPUT
     - name: Check cache
       id: cache
       uses: actions/cache/restore@v4
       with:
         key: ${{ inputs.url }}
-        path: ${{ inputs.destination }}/${{ env.filename }}
+        path: ${{ inputs.destination }}/${{ env.mercury233_action_cache_download_file_filename }}
     - if: steps.cache.outputs.cache-hit != 'true'
       name: Download file
       shell: bash
       run: |
         mkdir -p ${{ inputs.destination }}
         curl --retry 5 --connect-timeout 30 --location \
-          -o ${{ inputs.destination }}/${{ env.filename }} \
+          -o ${{ inputs.destination }}/${{ env.mercury233_action_cache_download_file_filename }} \
           ${{ inputs.url }}
     - if: steps.cache.outputs.cache-hit != 'true'
       name: Save cache
       uses: actions/cache/save@v4
       with:
         key: ${{ inputs.url }}
-        path: ${{ inputs.destination }}/${{ env.filename }}
+        path: ${{ inputs.destination }}/${{ env.mercury233_action_cache_download_file_filename }}
+    - name: Clean up # For the time being, we can't delete the environment variable, so we just set it to empty. See: https://github.com/actions/runner/issues/1126
+      shell: bash
+      run: |
+        echo "mercury233_action_cache_download_file_filename=" >> $GITHUB_ENV
