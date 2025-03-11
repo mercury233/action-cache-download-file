@@ -1,5 +1,5 @@
 name: 'Download file from URL and cache it in GitHub Actions'
-description: 'Download file from URL and cache it in GitHub Actions, to avoid downloading it every time'
+description: 'This GitHub Action downloads a file from a specified URL and caches it to avoid repeated downloads on subsequent runs.'
 inputs:
   url:
     description: 'URL of the file to download'
@@ -13,6 +13,9 @@ inputs:
     required: false
     default: ''
 outputs:
+  filename:
+    description: 'Name of the downloaded file'
+    value: ${{ steps.get-filename.outputs.filename }}
   filepath:
     description: 'Path to the downloaded file'
     value: ${{ steps.set-output.outputs.filepath }}
@@ -20,27 +23,34 @@ runs:
   using: "composite"
   steps:
     - name: Get file name
+      id: get-filename
       shell: bash
       run: |
         if [ -n "${{ inputs.filename }}" ]; then
-          echo "mercury233_action_cache_download_file_filename=${{ inputs.filename }}" >> $GITHUB_ENV
+          echo "filename=${{ inputs.filename }}" >> $GITHUB_OUTPUT
         else
-          echo "mercury233_action_cache_download_file_filename=$(basename ${{ inputs.url }})" >> $GITHUB_ENV
+          echo "filename=$(basename ${{ inputs.url }})" >> $GITHUB_OUTPUT
         fi
     - name: Set output path
       id: set-output
       shell: bash
+      env:
+        mercury233_action_cache_download_file_filename: ${{ steps.get-filename.outputs.filename }}
       run: |
         echo "filepath=${{ inputs.destination }}/${{ env.mercury233_action_cache_download_file_filename }}" >> $GITHUB_OUTPUT
     - name: Check cache
       id: cache
       uses: actions/cache/restore@v4
+      env:
+        mercury233_action_cache_download_file_filename: ${{ steps.get-filename.outputs.filename }}
       with:
         key: ${{ inputs.url }}
         path: ${{ inputs.destination }}/${{ env.mercury233_action_cache_download_file_filename }}
     - if: steps.cache.outputs.cache-hit != 'true'
       name: Download file
       shell: bash
+      env:
+        mercury233_action_cache_download_file_filename: ${{ steps.get-filename.outputs.filename }}
       run: |
         mkdir -p ${{ inputs.destination }}
         curl --retry 5 --connect-timeout 30 --location \
@@ -49,10 +59,8 @@ runs:
     - if: steps.cache.outputs.cache-hit != 'true'
       name: Save cache
       uses: actions/cache/save@v4
+      env:
+        mercury233_action_cache_download_file_filename: ${{ steps.get-filename.outputs.filename }}
       with:
         key: ${{ inputs.url }}
         path: ${{ inputs.destination }}/${{ env.mercury233_action_cache_download_file_filename }}
-    - name: Clean up # For the time being, we can't delete the environment variable, so we just set it to empty. See: https://github.com/actions/runner/issues/1126
-      shell: bash
-      run: |
-        echo "mercury233_action_cache_download_file_filename=" >> $GITHUB_ENV
