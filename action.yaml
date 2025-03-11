@@ -1,5 +1,8 @@
 name: 'Download file from URL and cache it in GitHub Actions'
 description: 'This GitHub Action downloads a file from a specified URL and caches it to avoid repeated downloads on subsequent runs.'
+branding:
+  icon: 'download'
+  color: 'green'
 inputs:
   url:
     description: 'URL of the file to download'
@@ -20,7 +23,7 @@ outputs:
     description: 'Path to the downloaded file'
     value: ${{ steps.set-output.outputs.filepath }}
 runs:
-  using: "composite"
+  using: 'composite'
   steps:
     - name: Get file name
       id: get-filename
