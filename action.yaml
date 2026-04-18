@@ -15,6 +15,10 @@ inputs:
     description: 'Set the name of the downloaded file'
     required: false
     default: ''
+  sha256:
+    description: 'Expected SHA256 hash of the file (hex string). If provided, the downloaded or cached file will be verified against this hash. The action fails if they do not match.'
+    required: false
+    default: ''
 outputs:
   filename:
     description: 'Name of the downloaded file'
@@ -59,6 +63,20 @@ runs:
         curl --retry 5 --connect-timeout 30 --location \
           -o ${{ inputs.destination }}/${{ env.mercury233_action_cache_download_file_filename }} \
           ${{ inputs.url }}
+    - name: Verify SHA256
+      if: inputs.sha256 != ''
+      shell: bash
+      env:
+        mercury233_action_cache_download_file_filepath: ${{ steps.set-output.outputs.filepath }}
+        mercury233_action_cache_download_file_sha256: ${{ inputs.sha256 }}
+      run: |
+        actual=$(sha256sum "${{ env.mercury233_action_cache_download_file_filepath }}" | awk '{print $1}')
+        expected=$(echo "${{ env.mercury233_action_cache_download_file_sha256 }}" | tr '[:upper:]' '[:lower:]')
+        if [ "$actual" != "$expected" ]; then
+          echo "SHA256 mismatch: expected $expected, got $actual"
+          exit 1
+        fi
+        echo "SHA256 verified: $actual"
     - if: steps.cache.outputs.cache-hit != 'true'
       name: Save cache
       uses: actions/cache/save@v5
