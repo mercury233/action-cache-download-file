@@ -32,19 +32,23 @@ runs:
     - name: Get file name
       id: get-filename
       shell: bash
+      env:
+        INPUT_FILENAME: ${{ inputs.filename }}
+        INPUT_URL: ${{ inputs.url }}
       run: |
-        if [ -n "${{ inputs.filename }}" ]; then
-          echo "filename=${{ inputs.filename }}" >> $GITHUB_OUTPUT
+        if [ -n "$INPUT_FILENAME" ]; then
+          echo "filename=$INPUT_FILENAME" >> $GITHUB_OUTPUT
         else
-          echo "filename=$(basename ${{ inputs.url }})" >> $GITHUB_OUTPUT
+          echo "filename=$(basename "$INPUT_URL")" >> $GITHUB_OUTPUT
         fi
     - name: Set output path
       id: set-output
       shell: bash
       env:
         mercury233_action_cache_download_file_filename: ${{ steps.get-filename.outputs.filename }}
+        INPUT_DESTINATION: ${{ inputs.destination }}
       run: |
-        echo "filepath=${{ inputs.destination }}/${{ env.mercury233_action_cache_download_file_filename }}" >> $GITHUB_OUTPUT
+        echo "filepath=$INPUT_DESTINATION/$mercury233_action_cache_download_file_filename" >> $GITHUB_OUTPUT
     - name: Check cache
       id: cache
       uses: actions/cache/restore@v5
@@ -58,11 +62,13 @@ runs:
       shell: bash
       env:
         mercury233_action_cache_download_file_filename: ${{ steps.get-filename.outputs.filename }}
+        INPUT_DESTINATION: ${{ inputs.destination }}
+        INPUT_URL: ${{ inputs.url }}
       run: |
-        mkdir -p ${{ inputs.destination }}
+        mkdir -p "$INPUT_DESTINATION"
         curl --retry 5 --connect-timeout 30 --location \
-          -o ${{ inputs.destination }}/${{ env.mercury233_action_cache_download_file_filename }} \
-          ${{ inputs.url }}
+          -o "$INPUT_DESTINATION/$mercury233_action_cache_download_file_filename" \
+          "$INPUT_URL"
     - name: Verify SHA256
       if: inputs.sha256 != ''
       shell: bash
@@ -70,8 +76,8 @@ runs:
         mercury233_action_cache_download_file_filepath: ${{ steps.set-output.outputs.filepath }}
         mercury233_action_cache_download_file_sha256: ${{ inputs.sha256 }}
       run: |
-        actual=$(sha256sum "${{ env.mercury233_action_cache_download_file_filepath }}" | awk '{print $1}')
-        expected=$(echo "${{ env.mercury233_action_cache_download_file_sha256 }}" | tr '[:upper:]' '[:lower:]')
+        actual=$(sha256sum "$mercury233_action_cache_download_file_filepath" | awk '{print $1}')
+        expected=$(echo "$mercury233_action_cache_download_file_sha256" | tr '[:upper:]' '[:lower:]')
         if [ "$actual" != "$expected" ]; then
           echo "SHA256 mismatch: expected $expected, got $actual"
           exit 1
