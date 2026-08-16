@@ -75,10 +75,10 @@ jobs:
           test "$SAFE_FILENAME" = 'README $(touch injected).md'
           test "$SAFE_FILEPATH" = 'test-downloads/safe-filename/README $(touch injected).md'
           test ! -e injected
-          printf '%s  %s\n' "$EXPECTED_SHA256" "$WITH_SHA256_FILEPATH" | sha256sum --check --strict
-          printf '%s  %s\n' "$EXPECTED_SHA256" "$WITHOUT_SHA256_FILEPATH" | sha256sum --check --strict
-          printf '%s  %s\n' "$EXPECTED_SHA256" "$QUERY_STRING_FILEPATH" | sha256sum --check --strict
-          printf '%s  %s\n' "$EXPECTED_SHA256" "$SAFE_FILEPATH" | sha256sum --check --strict
+          test "$(source ./sha256.sh < "$WITH_SHA256_FILEPATH")" = "$EXPECTED_SHA256"
+          test "$(source ./sha256.sh < "$WITHOUT_SHA256_FILEPATH")" = "$EXPECTED_SHA256"
+          test "$(source ./sha256.sh < "$QUERY_STRING_FILEPATH")" = "$EXPECTED_SHA256"
+          test "$(source ./sha256.sh < "$SAFE_FILEPATH")" = "$EXPECTED_SHA256"
 
   invalid-inputs:
     name: Reject ${{ matrix.name }}
