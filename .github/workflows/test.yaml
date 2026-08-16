@@ -1,0 +1,127 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  download:
+    name: Download file
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Download with expected SHA256
+        id: with-sha256
+        uses: ./
+        with:
+          url: https://raw.githubusercontent.com/mercury233/action-cache-download-file/b4e88f7fcb06e0f76fb98cd54c9128f6a652ab17/README.md
+          destination: test-downloads/with-sha256
+          filename: README.md
+          sha256: 7dc480c652d714f8933aa3491a253beed857eae7a1302d819cfcf6cd5690ce73
+
+      - name: Download without expected SHA256
+        id: without-sha256
+        uses: ./
+        with:
+          url: https://raw.githubusercontent.com/mercury233/action-cache-download-file/b4e88f7fcb06e0f76fb98cd54c9128f6a652ab17/README.md
+          destination: test-downloads/without-sha256
+
+      - name: Download with shell metacharacters in filename
+        id: safe-filename
+        uses: ./
+        with:
+          url: https://raw.githubusercontent.com/mercury233/action-cache-download-file/b4e88f7fcb06e0f76fb98cd54c9128f6a652ab17/README.md
+          destination: test-downloads/safe-filename
+          filename: 'README $(touch injected).md'
+          sha256: 7dc480c652d714f8933aa3491a253beed857eae7a1302d819cfcf6cd5690ce73
+
+      - name: Verify downloaded files and outputs
+        shell: bash
+        env:
+          EXPECTED_SHA256: 7dc480c652d714f8933aa3491a253beed857eae7a1302d819cfcf6cd5690ce73
+          WITH_SHA256_FILENAME: ${{ steps.with-sha256.outputs.filename }}
+          WITH_SHA256_FILEPATH: ${{ steps.with-sha256.outputs.filepath }}
+          WITHOUT_SHA256_FILENAME: ${{ steps.without-sha256.outputs.filename }}
+          WITHOUT_SHA256_FILEPATH: ${{ steps.without-sha256.outputs.filepath }}
+          SAFE_FILENAME: ${{ steps.safe-filename.outputs.filename }}
+          SAFE_FILEPATH: ${{ steps.safe-filename.outputs.filepath }}
+        run: |
+          test "$WITH_SHA256_FILENAME" = README.md
+          test "$WITH_SHA256_FILEPATH" = test-downloads/with-sha256/README.md
+          test "$WITHOUT_SHA256_FILENAME" = README.md
+          test "$WITHOUT_SHA256_FILEPATH" = test-downloads/without-sha256/README.md
+          test "$SAFE_FILENAME" = 'README $(touch injected).md'
+          test "$SAFE_FILEPATH" = 'test-downloads/safe-filename/README $(touch injected).md'
+          test ! -e injected
+          printf '%s  %s\n' "$EXPECTED_SHA256" "$WITH_SHA256_FILEPATH" | sha256sum --check --strict
+          printf '%s  %s\n' "$EXPECTED_SHA256" "$WITHOUT_SHA256_FILEPATH" | sha256sum --check --strict
+          printf '%s  %s\n' "$EXPECTED_SHA256" "$SAFE_FILEPATH" | sha256sum --check --strict
+
+  invalid-inputs:
+    name: Reject ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: URL containing a line break
+            url: |-
+              https://example.com/file
+              second-line
+            destination: invalid-tests
+            filename: file
+            sha256: ''
+          - name: invalid SHA256
+            url: https://example.com/file
+            destination: invalid-tests
+            filename: file
+            sha256: not-a-sha256
+          - name: filename containing a path
+            url: https://example.com/file
+            destination: invalid-tests
+            filename: ../file
+            sha256: ''
+          - name: filename containing a glob
+            url: https://example.com/file
+            destination: invalid-tests
+            filename: 'file[1]'
+            sha256: ''
+          - name: filename containing a backslash
+            url: https://example.com/file
+            destination: invalid-tests
+            filename: 'directory\file'
+            sha256: ''
+          - name: destination containing a glob
+            url: https://example.com/file
+            destination: 'invalid-*'
+            filename: file
+            sha256: ''
+          - name: destination with a special prefix
+            url: https://example.com/file
+            destination: '~/invalid-tests'
+            filename: file
+            sha256: ''
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Run action with invalid input
+        id: invalid-input
+        continue-on-error: true
+        uses: ./
+        with:
+          url: ${{ matrix.url }}
+          destination: ${{ matrix.destination }}
+          filename: ${{ matrix.filename }}
+          sha256: ${{ matrix.sha256 }}
+
+      - name: Verify action rejected the input
+        if: always()
+        shell: bash
+        env:
+          ACTION_OUTCOME: ${{ steps.invalid-input.outcome }}
+        run: test "$ACTION_OUTCOME" = failure
