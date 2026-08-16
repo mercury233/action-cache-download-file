@@ -46,7 +46,9 @@ runs:
         if [ -n "$INPUT_FILENAME" ]; then
           filename=$INPUT_FILENAME
         else
-          filename=$(basename -- "$INPUT_URL")
+          url_without_fragment=${INPUT_URL%%#*}
+          url_path=${url_without_fragment%%\?*}
+          filename=$(basename -- "$url_path")
         fi
 
         case "$filename" in

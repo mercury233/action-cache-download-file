@@ -37,6 +37,13 @@ jobs:
           url: https://raw.githubusercontent.com/mercury233/action-cache-download-file/b4e88f7fcb06e0f76fb98cd54c9128f6a652ab17/README.md
           destination: test-downloads/without-sha256
 
+      - name: Download URL with a query string
+        id: query-string
+        uses: ./
+        with:
+          url: https://raw.githubusercontent.com/mercury233/action-cache-download-file/b4e88f7fcb06e0f76fb98cd54c9128f6a652ab17/README.md?download=1
+          destination: test-downloads/query-string
+
       - name: Download with shell metacharacters in filename
         id: safe-filename
         uses: ./
@@ -54,6 +61,8 @@ jobs:
           WITH_SHA256_FILEPATH: ${{ steps.with-sha256.outputs.filepath }}
           WITHOUT_SHA256_FILENAME: ${{ steps.without-sha256.outputs.filename }}
           WITHOUT_SHA256_FILEPATH: ${{ steps.without-sha256.outputs.filepath }}
+          QUERY_STRING_FILENAME: ${{ steps.query-string.outputs.filename }}
+          QUERY_STRING_FILEPATH: ${{ steps.query-string.outputs.filepath }}
           SAFE_FILENAME: ${{ steps.safe-filename.outputs.filename }}
           SAFE_FILEPATH: ${{ steps.safe-filename.outputs.filepath }}
         run: |
@@ -61,11 +70,14 @@ jobs:
           test "$WITH_SHA256_FILEPATH" = test-downloads/with-sha256/README.md
           test "$WITHOUT_SHA256_FILENAME" = README.md
           test "$WITHOUT_SHA256_FILEPATH" = test-downloads/without-sha256/README.md
+          test "$QUERY_STRING_FILENAME" = README.md
+          test "$QUERY_STRING_FILEPATH" = test-downloads/query-string/README.md
           test "$SAFE_FILENAME" = 'README $(touch injected).md'
           test "$SAFE_FILEPATH" = 'test-downloads/safe-filename/README $(touch injected).md'
           test ! -e injected
           printf '%s  %s\n' "$EXPECTED_SHA256" "$WITH_SHA256_FILEPATH" | sha256sum --check --strict
           printf '%s  %s\n' "$EXPECTED_SHA256" "$WITHOUT_SHA256_FILEPATH" | sha256sum --check --strict
+          printf '%s  %s\n' "$EXPECTED_SHA256" "$QUERY_STRING_FILEPATH" | sha256sum --check --strict
           printf '%s  %s\n' "$EXPECTED_SHA256" "$SAFE_FILEPATH" | sha256sum --check --strict
 
   invalid-inputs:
