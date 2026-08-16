@@ -15,7 +15,7 @@ This action:
 
 - **url**: *Required.* The URL of the file to download. It must be non-empty and cannot contain line breaks.
 - **destination**: *Optional.* The directory where the file will be saved. Default is `temp`. Line breaks, backslashes, glob characters (`*`, `?`, `[` and `]`), and a leading `#`, `!`, or `~` are not allowed.
-- **filename**: *Optional.* The name to assign to the downloaded file. It must be a single file name, not a path, and cannot contain glob characters (`*`, `?`, `[` and `]`). If not provided, the action will use the basename from the URL.
+- **filename**: *Optional.* The name to assign to the downloaded file. It must be a single file name, not a path, and cannot contain glob characters (`*`, `?`, `[` and `]`). If not provided, the action will use the basename from the URL path, ignoring its query string and fragment.
 - **sha256**: *Optional.* Expected SHA256 hash of the file (hex string). If provided, the downloaded or cached file will be verified against this hash. The action fails if they do not match.
 
 ## Outputs
