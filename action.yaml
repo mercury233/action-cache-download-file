@@ -1,5 +1,5 @@
-name: 'Download file from URL and cache it in GitHub Actions'
-description: 'This GitHub Action downloads a file from a specified URL and caches it to avoid repeated downloads on subsequent runs.'
+name: 'Download and cache a file in GitHub Actions'
+description: 'Downloads a file from a URL, optionally verifies its SHA-256 checksum, and caches it for subsequent workflow runs.'
 branding:
   icon: 'download'
   color: 'green'
@@ -8,20 +8,20 @@ inputs:
     description: 'URL of the file to download'
     required: true
   destination:
-    description: 'Destination directory to save the downloaded file'
+    description: 'Directory in which to save the downloaded file'
     required: false
     default: 'temp'
   filename:
-    description: 'Set the name of the downloaded file'
+    description: 'Name to use for the downloaded file; derived from the URL path when omitted'
     required: false
     default: ''
   sha256:
-    description: 'Expected SHA256 hash of the file (hex string). If provided, the downloaded or cached file will be verified against this hash. The action fails if they do not match.'
+    description: 'Expected SHA-256 checksum as a 64-character hexadecimal string. When provided, both downloaded and cached files are verified against it.'
     required: false
     default: ''
 outputs:
   filename:
-    description: 'Name of the downloaded file'
+    description: 'Resolved name of the downloaded file'
     value: ${{ steps.get-filename.outputs.filename }}
   filepath:
     description: 'Path to the downloaded file'
