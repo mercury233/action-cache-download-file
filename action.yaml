@@ -29,65 +29,102 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Get file name
+    - name: Validate URL and get file name
       id: get-filename
       shell: bash
       env:
         INPUT_FILENAME: ${{ inputs.filename }}
         INPUT_URL: ${{ inputs.url }}
       run: |
+        case "$INPUT_URL" in
+          ''|*$'\n'*|*$'\r'*)
+            echo "Invalid URL: it must be non-empty and cannot contain line breaks" >&2
+            exit 1
+            ;;
+        esac
+
         if [ -n "$INPUT_FILENAME" ]; then
-          echo "filename=$INPUT_FILENAME" >> $GITHUB_OUTPUT
+          filename=$INPUT_FILENAME
         else
-          echo "filename=$(basename "$INPUT_URL")" >> $GITHUB_OUTPUT
+          filename=$(basename -- "$INPUT_URL")
         fi
-    - name: Set output path
+
+        case "$filename" in
+          ''|'.'|'..'|*/*|*'\'*|*\**|*\?*|*\[*|*\]*|*$'\n'*|*$'\r'*)
+            echo "Invalid filename: it must be a single, non-empty path component without glob characters" >&2
+            exit 1
+            ;;
+        esac
+
+        printf 'filename=%s\n' "$filename" >> "$GITHUB_OUTPUT"
+    - name: Set output path and cache key
       id: set-output
       shell: bash
       env:
-        mercury233_action_cache_download_file_filename: ${{ steps.get-filename.outputs.filename }}
         INPUT_DESTINATION: ${{ inputs.destination }}
+        INPUT_SHA256: ${{ inputs.sha256 }}
+        INPUT_URL: ${{ inputs.url }}
+        FILENAME: ${{ steps.get-filename.outputs.filename }}
       run: |
-        echo "filepath=$INPUT_DESTINATION/$mercury233_action_cache_download_file_filename" >> $GITHUB_OUTPUT
+        case "$INPUT_DESTINATION" in
+          *$'\n'*|*$'\r'*|*'\'*|*\**|*\?*|*\[*|*\]*|'#'*|'!'*|'~'|'~/'*)
+            echo "Invalid destination: line breaks, backslashes, glob characters, and leading #, !, or ~ are not allowed" >&2
+            exit 1
+            ;;
+        esac
+
+        if [ -n "$INPUT_SHA256" ]; then
+          if [[ ! "$INPUT_SHA256" =~ ^[[:xdigit:]]{64}$ ]]; then
+            echo "Invalid SHA256: expected exactly 64 hexadecimal characters" >&2
+            exit 1
+          fi
+          expected_sha256=$(printf '%s' "$INPUT_SHA256" | tr '[:upper:]' '[:lower:]')
+          cache_key=download-file-$expected_sha256
+        else
+          expected_sha256=
+          url_sha256=$(printf '%s' "$INPUT_URL" | sha256sum)
+          url_sha256=${url_sha256%% *}
+          cache_key=download-url-$url_sha256
+        fi
+
+        mkdir -p -- "$INPUT_DESTINATION"
+
+        printf 'filepath=%s/%s\n' "$INPUT_DESTINATION" "$FILENAME" >> "$GITHUB_OUTPUT"
+        printf 'expected_sha256=%s\n' "$expected_sha256" >> "$GITHUB_OUTPUT"
+        printf 'cache_key=%s\n' "$cache_key" >> "$GITHUB_OUTPUT"
     - name: Check cache
       id: cache
       uses: actions/cache/restore@v5
-      env:
-        mercury233_action_cache_download_file_filename: ${{ steps.get-filename.outputs.filename }}
       with:
-        key: ${{ inputs.url }}
-        path: ${{ inputs.destination }}/${{ env.mercury233_action_cache_download_file_filename }}
+        key: ${{ steps.set-output.outputs.cache_key }}
+        path: ${{ steps.set-output.outputs.filepath }}
     - if: steps.cache.outputs.cache-hit != 'true'
       name: Download file
       shell: bash
       env:
-        mercury233_action_cache_download_file_filename: ${{ steps.get-filename.outputs.filename }}
-        INPUT_DESTINATION: ${{ inputs.destination }}
         INPUT_URL: ${{ inputs.url }}
+        FILEPATH: ${{ steps.set-output.outputs.filepath }}
       run: |
-        mkdir -p "$INPUT_DESTINATION"
-        curl --retry 5 --connect-timeout 30 --location \
-          -o "$INPUT_DESTINATION/$mercury233_action_cache_download_file_filename" \
-          "$INPUT_URL"
+        curl --retry 5 --connect-timeout 30 --location --globoff \
+          --output "$FILEPATH" \
+          -- "$INPUT_URL"
     - name: Verify SHA256
       if: inputs.sha256 != ''
       shell: bash
       env:
-        mercury233_action_cache_download_file_filepath: ${{ steps.set-output.outputs.filepath }}
-        mercury233_action_cache_download_file_sha256: ${{ inputs.sha256 }}
+        FILEPATH: ${{ steps.set-output.outputs.filepath }}
+        EXPECTED_SHA256: ${{ steps.set-output.outputs.expected_sha256 }}
       run: |
-        actual=$(sha256sum "$mercury233_action_cache_download_file_filepath" | awk '{print $1}')
-        expected=$(echo "$mercury233_action_cache_download_file_sha256" | tr '[:upper:]' '[:lower:]')
-        if [ "$actual" != "$expected" ]; then
-          echo "SHA256 mismatch: expected $expected, got $actual"
+        actual=$(sha256sum -- "$FILEPATH")
+        actual=${actual%% *}
+        if [ "$actual" != "$EXPECTED_SHA256" ]; then
+          printf 'SHA256 mismatch: expected %s, got %s\n' "$EXPECTED_SHA256" "$actual" >&2
           exit 1
         fi
-        echo "SHA256 verified: $actual"
+        printf 'SHA256 verified: %s\n' "$actual"
     - if: steps.cache.outputs.cache-hit != 'true'
       name: Save cache
       uses: actions/cache/save@v5
-      env:
-        mercury233_action_cache_download_file_filename: ${{ steps.get-filename.outputs.filename }}
       with:
-        key: ${{ inputs.url }}
-        path: ${{ inputs.destination }}/${{ env.mercury233_action_cache_download_file_filename }}
+        key: ${{ steps.set-output.outputs.cache_key }}
+        path: ${{ steps.set-output.outputs.filepath }}

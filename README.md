@@ -6,16 +6,16 @@ This GitHub Action downloads a file from a specified URL and caches it to avoid 
 
 This action:
 - Accepts a file URL and optional download destination, filename, and SHA256 hash.
-- Checks if the file is already cached using the URL as the cache key.
+- Checks if the file is already cached using the expected SHA256 hash when provided, or a hash of the URL otherwise.
 - Downloads the file if it isn't cached.
 - Verifies the file's SHA256 hash if one is provided (validates both cached and newly downloaded files).
 - Caches the downloaded file for future runs (only if verification passes).
 
 ## Inputs
 
-- **url**: *Required.* The URL of the file to download.
-- **destination**: *Optional.* The directory where the file will be saved. Default is `temp`.
-- **filename**: *Optional.* The name to assign to the downloaded file. If not provided, the action will use the basename from the URL.
+- **url**: *Required.* The URL of the file to download. It must be non-empty and cannot contain line breaks.
+- **destination**: *Optional.* The directory where the file will be saved. Default is `temp`. Line breaks, backslashes, glob characters (`*`, `?`, `[` and `]`), and a leading `#`, `!`, or `~` are not allowed.
+- **filename**: *Optional.* The name to assign to the downloaded file. It must be a single file name, not a path, and cannot contain glob characters (`*`, `?`, `[` and `]`). If not provided, the action will use the basename from the URL.
 - **sha256**: *Optional.* Expected SHA256 hash of the file (hex string). If provided, the downloaded or cached file will be verified against this hash. The action fails if they do not match.
 
 ## Outputs
@@ -41,7 +41,9 @@ jobs:
           filename: 'example.zip'
           sha256: '1234567890123456789012345678901234567890123456789012345678901234'
       - name: Use downloaded file
-        run: echo "File downloaded to ${{ steps.download.outputs.filepath }}"
+        env:
+          DOWNLOADED_FILEPATH: ${{ steps.download.outputs.filepath }}
+        run: printf 'File downloaded to %s\n' "$DOWNLOADED_FILEPATH"
 ```
 
 ## License
