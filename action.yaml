@@ -63,6 +63,7 @@ runs:
       id: set-output
       shell: bash
       env:
+        ACTION_PATH: ${{ github.action_path }}
         INPUT_DESTINATION: ${{ inputs.destination }}
         INPUT_SHA256: ${{ inputs.sha256 }}
         INPUT_URL: ${{ inputs.url }}
@@ -84,8 +85,7 @@ runs:
           cache_key=download-file-$expected_sha256
         else
           expected_sha256=
-          url_sha256=$(printf '%s' "$INPUT_URL" | sha256sum)
-          url_sha256=${url_sha256%% *}
+          url_sha256=$(printf '%s' "$INPUT_URL" | source "$ACTION_PATH/sha256.sh")
           cache_key=download-url-$url_sha256
         fi
 
@@ -114,11 +114,11 @@ runs:
       if: inputs.sha256 != ''
       shell: bash
       env:
+        ACTION_PATH: ${{ github.action_path }}
         FILEPATH: ${{ steps.set-output.outputs.filepath }}
         EXPECTED_SHA256: ${{ steps.set-output.outputs.expected_sha256 }}
       run: |
-        actual=$(sha256sum -- "$FILEPATH")
-        actual=${actual%% *}
+        actual=$(source "$ACTION_PATH/sha256.sh" < "$FILEPATH")
         if [ "$actual" != "$EXPECTED_SHA256" ]; then
           printf 'SHA256 mismatch: expected %s, got %s\n' "$EXPECTED_SHA256" "$actual" >&2
           exit 1
